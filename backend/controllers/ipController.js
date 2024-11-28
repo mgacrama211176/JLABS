@@ -3,11 +3,11 @@ const History = require("../models/History");
 const { Op } = require("sequelize");
 
 const getGeoInfo = async (req, res) => {
+  // Attempt to get IP from request parameters or body
   let ip = req.params.ip || req.body.ip;
 
-  // If no IP provided, use the requester's IP
   if (!ip) {
-    ip = req.ip;
+    ip = req.headers["ip"];
   }
 
   // Validate IP address
@@ -31,7 +31,7 @@ const getGeoInfo = async (req, res) => {
       UserId: req.user.id,
     });
 
-    return res.json(geoData);
+    return res.json({ geoData: geoData, ip: ip });
   } catch (error) {
     return res
       .status(500)

@@ -12,6 +12,9 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
+// Trust the first proxy (adjust the number if there are multiple proxies)
+app.set("trust proxy", true);
+
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/ip", ipRoutes);
@@ -23,10 +26,9 @@ app.use("/api/ip", ipRoutes);
 
 // Database Connection and Server Start
 sequelize
-  .authenticate()
+  .authenticate({ logging: false })
   .then(() => {
-    console.log("Database connected.");
-    return sequelize.sync();
+    return sequelize.sync({ logging: false });
   })
   .then(() => {
     app.listen(PORT, () => {

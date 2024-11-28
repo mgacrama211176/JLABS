@@ -5,8 +5,6 @@ import axios from "axios";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
-
-// Fix the default icon issue with Leaflet in React
 import icon from "leaflet/dist/images/marker-icon.png";
 import iconShadow from "leaflet/dist/images/marker-shadow.png";
 
@@ -26,24 +24,52 @@ function Home() {
   const [error, setError] = useState("");
   const [selectedIds, setSelectedIds] = useState([]);
   const auth = useSelector((state) => state.auth);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     dispatch(fetchHistory());
-    fetchCurrentGeo();
+    (async () => {
+      await fetchCurrentGeo();
+    })();
   }, [dispatch]);
 
+  // Function to fetch the user's IP address
+  const fetchIpAddress = async () => {
+    try {
+      const response = await fetch("https://api.ipify.org?format=json");
+      if (!response.ok) {
+        throw new Error("Network response was not ok");
+      }
+      const data = await response.json();
+      return data.ip;
+    } catch (error) {
+      console.error("Error fetching IP address:", error);
+    }
+  };
+
   const fetchCurrentGeo = async () => {
+    setIsLoading(true);
+    const ipAddress = await fetchIpAddress();
+
     try {
       const response = await axios.get(
         `${process.env.REACT_APP_API_URL}/ip/current`,
         {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: {
+            Authorization: `Bearer ${token}`,
+            ip: ipAddress,
+          },
         }
       );
-      console.log(`response.data:`, response.data);
-      setCurrentGeo(response.data);
+      if (response.data && response.data.geoData) {
+        setCurrentGeo(response.data.geoData);
+      } else {
+        console.error("Missing location data in response");
+      }
     } catch (err) {
-      console.error(err);
+      console.error("Error fetching geo data:", err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -87,10 +113,12 @@ function Home() {
 
   // Extract coordinates if loc is defined and properly formatted
   const getCoordinates = () => {
+    console.log("Current Geo Data:", currentGeo);
     if (currentGeo?.loc) {
       const coords = currentGeo.loc
         .split(",")
         .map((coord) => parseFloat(coord));
+      console.log("Parsed Coordinates:", coords);
       if (coords.length === 2 && coords.every((num) => !isNaN(num))) {
         return coords;
       }
@@ -128,55 +156,59 @@ function Home() {
         </div>
 
         {/* Current IP Information */}
-        {currentGeo && (
-          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-            <h3 className="text-2xl font-medium text-gray-700 mb-4">
-              Current IP Information
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <p className="text-gray-600">
-                  <strong>IP:</strong> {currentGeo.ip}
-                </p>
-                <p className="text-gray-600">
-                  <strong>City:</strong> {currentGeo.city}
-                </p>
-                <p className="text-gray-600">
-                  <strong>Region:</strong> {currentGeo.region}
-                </p>
-                <p className="text-gray-600">
-                  <strong>Country:</strong> {currentGeo.country}
-                </p>
-                <p className="text-gray-600">
-                  <strong>Location:</strong> {currentGeo.loc}
-                </p>
-              </div>
-              {/* Optional: Display Map */}
-              <div className="mt-4 md:mt-0">
-                {coordinates ? (
-                  <MapContainer
-                    center={coordinates}
-                    zoom={13}
-                    style={{ height: "300px", width: "100%" }}
-                    className="rounded-lg"
-                  >
-                    <TileLayer
-                      url={`https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png`}
-                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                    />
-                    <Marker position={coordinates}>
-                      <Popup>
-                        {currentGeo.city}, {currentGeo.region},{" "}
-                        {currentGeo.country}
-                      </Popup>
-                    </Marker>
-                  </MapContainer>
-                ) : (
-                  <p className="text-red-500">No location data available.</p>
-                )}
+        {isLoading ? (
+          <p>Loading current location...</p>
+        ) : (
+          currentGeo && (
+            <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+              <h3 className="text-2xl font-medium text-gray-700 mb-4">
+                Current IP Information
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <p className="text-gray-600">
+                    <strong>IP:</strong> {currentGeo.ip}
+                  </p>
+                  <p className="text-gray-600">
+                    <strong>City:</strong> {currentGeo.city}
+                  </p>
+                  <p className="text-gray-600">
+                    <strong>Region:</strong> {currentGeo.region}
+                  </p>
+                  <p className="text-gray-600">
+                    <strong>Country:</strong> {currentGeo.country}
+                  </p>
+                  <p className="text-gray-600">
+                    <strong>Location:</strong> {currentGeo.loc}
+                  </p>
+                </div>
+                {/* Optional: Display Map */}
+                <div className="mt-4 md:mt-0">
+                  {coordinates ? (
+                    <MapContainer
+                      center={coordinates}
+                      zoom={13}
+                      style={{ height: "300px", width: "100%" }}
+                      className="rounded-lg"
+                    >
+                      <TileLayer
+                        url={`https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png`}
+                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                      />
+                      <Marker position={coordinates}>
+                        <Popup>
+                          {currentGeo.city}, {currentGeo.region},{" "}
+                          {currentGeo.country}
+                        </Popup>
+                      </Marker>
+                    </MapContainer>
+                  ) : (
+                    <p className="text-red-500">No location data available.</p>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
+          )
         )}
 
         {/* Search History Section */}

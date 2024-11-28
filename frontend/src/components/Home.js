@@ -25,6 +25,7 @@ function Home() {
   const [ipInput, setIpInput] = useState("");
   const [error, setError] = useState("");
   const [selectedIds, setSelectedIds] = useState([]);
+  const auth = useSelector((state) => state.auth);
 
   useEffect(() => {
     dispatch(fetchHistory());
@@ -100,103 +101,154 @@ function Home() {
   const coordinates = getCoordinates();
 
   return (
-    <div className="home-container">
-      <h2>Home</h2>
-      {currentGeo && (
-        <div className="geo-info">
-          <h3>Current IP Information</h3>
-          <p>
-            <strong>IP:</strong> {currentGeo?.ip}
-          </p>
-          <p>
-            <strong>City:</strong> {currentGeo?.city}
-          </p>
-          <p>
-            <strong>Region:</strong> {currentGeo?.region}
-          </p>
-          <p>
-            <strong>Country:</strong> {currentGeo?.country}
-          </p>
-          <p>
-            <strong>Location:</strong> {currentGeo?.loc}
-          </p>
-          {/* Optional: Display Map */}
-          {coordinates ? (
-            <MapContainer
-              center={coordinates}
-              zoom={13}
-              style={{ height: "300px", width: "100%" }}
+    <div className="min-h-screen bg-gray-100 p-6">
+      <div className="max-w-7xl mx-auto">
+        <h2 className="text-3xl font-semibold text-gray-800 mb-6">Dashboard</h2>
+
+        {/* IP Lookup Section */}
+        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+          <h3 className="text-2xl font-medium text-gray-700 mb-4">IP Lookup</h3>
+          <div className="flex flex-col sm:flex-row items-center gap-4">
+            <input
+              type="text"
+              placeholder="Enter IP Address"
+              value={ipInput}
+              onChange={(e) => setIpInput(e.target.value)}
+              className="w-full sm:w-auto flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <button
+              onClick={handleLookup}
+              className="w-full sm:w-auto px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={auth.loading}
             >
-              <TileLayer
-                url={`https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png`}
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-              />
-              <Marker position={coordinates}>
-                <Popup>
-                  {currentGeo?.city}, {currentGeo?.region},{" "}
-                  {currentGeo?.country}
-                </Popup>
-              </Marker>
-            </MapContainer>
+              {auth.loading ? "Looking up..." : "Lookup"}
+            </button>
+          </div>
+          {error && <p className="text-red-500 mt-2">{error}</p>}
+        </div>
+
+        {/* Current IP Information */}
+        {currentGeo && (
+          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h3 className="text-2xl font-medium text-gray-700 mb-4">
+              Current IP Information
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <p className="text-gray-600">
+                  <strong>IP:</strong> {currentGeo.ip}
+                </p>
+                <p className="text-gray-600">
+                  <strong>City:</strong> {currentGeo.city}
+                </p>
+                <p className="text-gray-600">
+                  <strong>Region:</strong> {currentGeo.region}
+                </p>
+                <p className="text-gray-600">
+                  <strong>Country:</strong> {currentGeo.country}
+                </p>
+                <p className="text-gray-600">
+                  <strong>Location:</strong> {currentGeo.loc}
+                </p>
+              </div>
+              {/* Optional: Display Map */}
+              <div className="mt-4 md:mt-0">
+                {coordinates ? (
+                  <MapContainer
+                    center={coordinates}
+                    zoom={13}
+                    style={{ height: "300px", width: "100%" }}
+                    className="rounded-lg"
+                  >
+                    <TileLayer
+                      url={`https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png`}
+                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                    />
+                    <Marker position={coordinates}>
+                      <Popup>
+                        {currentGeo.city}, {currentGeo.region},{" "}
+                        {currentGeo.country}
+                      </Popup>
+                    </Marker>
+                  </MapContainer>
+                ) : (
+                  <p className="text-red-500">No location data available.</p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Search History Section */}
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-2xl font-medium text-gray-700">
+              Search History
+            </h3>
+            {selectedIds.length > 0 && (
+              <button
+                onClick={handleDelete}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              >
+                Delete Selected
+              </button>
+            )}
+          </div>
+          {history.loading ? (
+            <p>Loading history...</p>
+          ) : history.error ? (
+            <p className="text-red-500">{history.error}</p>
+          ) : history.items.length === 0 ? (
+            <p className="text-gray-500">No history available.</p>
           ) : (
-            <p>No location data available.</p>
+            <div className="overflow-x-auto">
+              <table className="min-w-full bg-white">
+                <thead>
+                  <tr>
+                    <th className="px-4 py-2 border-b">Select</th>
+                    <th className="px-4 py-2 border-b">IP</th>
+                    <th className="px-4 py-2 border-b">City</th>
+                    <th className="px-4 py-2 border-b">Region</th>
+                    <th className="px-4 py-2 border-b">Country</th>
+                    <th className="px-4 py-2 border-b">Location</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {history.items.map((item) => (
+                    <tr
+                      key={item.id}
+                      className="hover:bg-gray-100 cursor-pointer"
+                      onClick={() => setCurrentGeo(item.geoData)}
+                    >
+                      <td className="px-4 py-2 border-b text-center">
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.includes(item.id)}
+                          onChange={(e) => {
+                            e.stopPropagation();
+                            handleCheckboxChange(item.id);
+                          }}
+                          className="form-checkbox h-5 w-5 text-blue-600"
+                        />
+                      </td>
+                      <td className="px-4 py-2 border-b">{item.ip}</td>
+                      <td className="px-4 py-2 border-b">
+                        {item.geoData.city}
+                      </td>
+                      <td className="px-4 py-2 border-b">
+                        {item.geoData.region}
+                      </td>
+                      <td className="px-4 py-2 border-b">
+                        {item.geoData.country}
+                      </td>
+                      <td className="px-4 py-2 border-b">{item.geoData.loc}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
-      )}
-      <div className="lookup-section">
-        <input
-          type="text"
-          placeholder="Enter IP Address"
-          value={ipInput}
-          onChange={(e) => setIpInput(e.target.value)}
-        />
-        <button onClick={handleLookup}>Lookup</button>
-        {error && <p className="error">{error}</p>}
-      </div>
-      <div className="history-section">
-        <h3>Search History</h3>
-        {history.loading ? (
-          <p>Loading history...</p>
-        ) : history.error ? (
-          <p className="error">{history.error}</p>
-        ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>Select</th>
-                <th>IP</th>
-                <th>City</th>
-                <th>Region</th>
-                <th>Country</th>
-                <th>Location</th>
-              </tr>
-            </thead>
-            <tbody>
-              {history.items.map((item) => (
-                <tr key={item.id} onClick={() => setCurrentGeo(item.geoData)}>
-                  <td>
-                    <input
-                      type="checkbox"
-                      checked={selectedIds.includes(item.id)}
-                      onChange={(e) => {
-                        e.stopPropagation();
-                        handleCheckboxChange(item.id);
-                      }}
-                    />
-                  </td>
-                  <td>{item.ip}</td>
-                  <td>{item.geoData.city}</td>
-                  <td>{item.geoData.region}</td>
-                  <td>{item.geoData.country}</td>
-                  <td>{item.geoData.loc}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-        {selectedIds.length > 0 && (
-          <button onClick={handleDelete}>Delete Selected</button>
-        )}
       </div>
     </div>
   );
